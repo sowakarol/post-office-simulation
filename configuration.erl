@@ -18,3 +18,9 @@ average_time_answering_question()   -> 1.
 
 %consumers configurations
 average_consumers_per_day() -> 100. 
+
+
+
+
+%hesitation's values of random generator in percents
+percentage()    -> 10.

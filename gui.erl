@@ -4,9 +4,9 @@
 
 init(Cashiers_Number) ->
     Wx = make_window(),
-    % init_cashiers(Wx, Cashiers_Number,0,0,980),
+    Cashiers = init_cashiers(Wx, Cashiers_Number,0,0,980,[]),
     % show_clients(Wx, init_clients(10), 0, 100),
-    loop(Wx).
+    loop(Wx, Cashiers).
 
 make_window() ->
     Server = wx:new(),
@@ -21,12 +21,13 @@ make_window() ->
 
     {Server, Frame, End_Button}.
 
-loop(Wx) ->
+loop(Wx, Cashiers) ->
     {Server, Frame, End_Button} = Wx,
     io:format("--waiting in the loop--~n", []),
     receive 
         #wx{id = ?wxID_STOP, event=#wxCommand{type = command_button_clicked}} ->
             io:format("--ending simulation-- ~n"), 
+            destroy_cashiers(Cashiers),
             wxWindow:destroy(End_Button),
             wxFrame:setStatusText(Frame, "Simulation ended."), 
             end_simulation(Frame);
@@ -45,14 +46,17 @@ end_simulation(Frame) ->
             ok
     end.
 
-init_cashiers(_, 0,_,_,_) -> ok;
-init_cashiers({_, Frame, _} = Wx, CashiersNumber, X,Y, X_Limit) ->
-    wxStaticText:new(Frame, CashiersNumber, "X", [{pos,{X,Y}}]),
+destroy_cashiers(List) ->
+    lists:foreach(fun(H) -> wxWindow:destroy(H) end, List).
+
+init_cashiers(_, 0,_,_,_, List) -> List;
+init_cashiers({_, Frame, _} = Wx, CashiersNumber, X,Y, X_Limit, List) ->
+    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "X", [{pos,{X,Y}}])]),
     if 
         X > X_Limit ->
-            init_cashiers(Wx,CashiersNumber - 1, 0, Y + 20, X_Limit);
+            init_cashiers(Wx,CashiersNumber - 1, 0, Y + 20, X_Limit, List2);
         true ->
-            init_cashiers(Wx,CashiersNumber - 1, X + 20, Y, X_Limit)
+            init_cashiers(Wx,CashiersNumber - 1, X + 20, Y, X_Limit, List2)
     end.
 
 init_clients(Clients_Number) ->

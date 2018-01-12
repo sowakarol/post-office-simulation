@@ -11,7 +11,7 @@ start_working(Case) ->
     ready(Self#cashier{state = ready}).
 
 ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCase = Case}) ->
-    io:format("~p~n",[State]),
+    % io:format("~p~n",[State]),
     % monitor
     receive
         {client, _Case, Time} -> 
@@ -19,19 +19,16 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
             Pid = spawn(fun() -> handle_client() end),
             Pid ! {client, self(), _Case, Time},
             ready(Self#cashier{state = busy});
-        {get_state, _From, _Case} ->
-            if
-                Case /= _Case  -> _From ! {send_state, case_different, self(), State};
-                true -> _From ! {send_state, case_equal, self(), State}
-            end,
-            ready(Self);
+        {get_state, _From} ->
+            _From ! {send_state, self(), State},
+            ready(Self);   
         {handled_client}  ->
             io:format("Cashier handled ~p clients~n", [HandleClients + 1]),
             ready(Self#cashier{state = ready, handled_clients = HandleClients + 1});
         {terminate, _} ->
             io:format("Terminating cashier"), ok;
-        _ ->
-            io:format("Not understanding~n"),
+        W ->
+            io:format("Not understanding ~p ~n", [W]),
             ready(Self)
     end.
 

@@ -1,6 +1,5 @@
 -module(client_generator).
--compile([export_all]).
-
+-export([generate_client/0]).
 
 generate_client() ->
     random:seed(erlang:timestamp()),
@@ -9,10 +8,11 @@ generate_client() ->
         Probability < 200 -> 
             RandomTime = random_data:generate(configuration:average_time_sending_package()),
             {client, send_package, RandomTime};
-        Probability < 800 -> 
+        % Probability < 800 -> 
+        true ->
             RandomTime = random_data:generate(configuration:average_time_receiving_package()),
-            {client, receive_package, RandomTime};
-        true -> 
-            RandomTime = random_data:generate(configuration:average_time_answering_question()),
-            {client, ask_question, RandomTime}     
+            {client, receive_package, RandomTime}
+        % true -> 
+        %     RandomTime = random_data:generate(configuration:average_time_answering_question()),
+        %     {client, ask_question, RandomTime}     
     end.

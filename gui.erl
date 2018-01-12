@@ -1,33 +1,72 @@
 -module(gui).
 -compile([export_all]).
+-include_lib("wx/include/wx.hrl").
 
-initFrame(CashiersNumber) ->
-    Wx = wx:new(),
-    %TODO config size X,Y
+init(Cashiers_Number) ->
+    Wx = make_window(),
+    % init_cashiers(Wx, Cashiers_Number,0,0,980),
+    % show_clients(Wx, init_clients(10), 0, 100),
+    loop(Wx).
 
-    F = wxFrame:new(Wx, -1, "Hallo!", [{size,{1000,500}}]),
-    wxFrame:createStatusBar(F),
-    wxFrame:setStatusText(F, "Quiet here."), 
-    wxFrame:show(F),
-    SB = wxFrame:getStatusBar(F),
-    wxStatusBar:pushStatusText(SB, "A LITTLE LOUDER NOW."),
-    wxStatusBar:popStatusText(SB), 
-    initCashiers(F,CashiersNumber,0,0,980),
-    F.
+make_window() ->
+    Server = wx:new(),
+    Frame = wxFrame:new(Server, -1, "Post office simulation", [{size,{1000,500}}]),
+    End_Button = wxButton:new(Frame, ?wxID_STOP, [{label, "End simulation"}, {pos, {300,10}}]),
+    
+    wxFrame:createStatusBar(Frame),
+    wxFrame:show(Frame),
+    
+    wxFrame:connect(Frame, close_window),
+    wxButton:connect(End_Button, command_button_clicked),
 
-initCashiers(_, 0,_,_,_) -> ok;
+    {Server, Frame, End_Button}.
 
-initCashiers(F, CashiersNumber, X,Y, X_Limit) ->
-    wxStaticText:new(F, CashiersNumber, "X", [{pos,{X,Y}}]),
-    if 
-        X > X_Limit ->
-            initCashiers(F,CashiersNumber - 1, 0, Y + 20, X_Limit);
-        true ->
-            initCashiers(F,CashiersNumber - 1, X + 20, Y, X_Limit)
+loop(Wx) ->
+    {Server, Frame, End_Button} = Wx,
+    io:format("--waiting in the loop--~n", []),
+    receive 
+        #wx{id = ?wxID_STOP, event=#wxCommand{type = command_button_clicked}} ->
+            io:format("--ending simulation-- ~n"), 
+            wxWindow:destroy(End_Button),
+            wxFrame:setStatusText(Frame, "Simulation ended."), 
+            end_simulation(Frame);
+        #wx{event=#wxClose{}} ->
+            io:format("--closing window ~p-- ~n",[self()]),
+            wxWindow:destroy(Frame),
+            ok
     end.
 
+end_simulation(Frame) ->
+    io:format("--simulation ended--~n"),
+    receive
+        #wx{event=#wxClose{}} ->
+            io:format("--closing window ~p-- ~n",[self()]),
+            wxWindow:destroy(Frame),
+            ok
+    end.
 
+init_cashiers(_, 0,_,_,_) -> ok;
+init_cashiers({_, Frame, _} = Wx, CashiersNumber, X,Y, X_Limit) ->
+    wxStaticText:new(Frame, CashiersNumber, "X", [{pos,{X,Y}}]),
+    if 
+        X > X_Limit ->
+            init_cashiers(Wx,CashiersNumber - 1, 0, Y + 20, X_Limit);
+        true ->
+            init_cashiers(Wx,CashiersNumber - 1, X + 20, Y, X_Limit)
+    end.
 
-terminate(Frame) ->
-    wxFrame:destroy(Frame).
+init_clients(Clients_Number) ->
+    [X || X <- lists:seq(0,Clients_Number)].
+
+show_clients({_, Frame, _} = Wx, [H|T], X, Y) ->
+    wxStaticText:new(Frame, 0, "C", [{pos,{X,Y}}]),
+    % timer:sleep(1000),
+    show_clients(Wx, T, X, Y + 20);
+show_clients(_, [], _, _) -> ok.
+
+clear_clients(F, [H|T], X, Y) ->
+    wxStaticText:new(F, 0, "X", [{pos,{X,Y}}]),
+    timer:sleep(1000),
+    clear_clients(F, T, X, Y + 20);
+clear_clients(_, [], _, _) -> ok.
 

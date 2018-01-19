@@ -37,7 +37,7 @@ handle_client() ->
     receive
         {client, Pid, _, Time} ->
             io:format("serving~n"),
-            Simulation_Time = Time * 1000 * 5,
+            Simulation_Time = Time * 1000 * configuration:one_minute_in_application(),
             timer:sleep(round(Simulation_Time)),
             io:format("Client was handled after ~p minutes~n", [Time]),
             Pid ! {handled_client}

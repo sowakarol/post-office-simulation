@@ -7,13 +7,14 @@
 
 generate(Average) ->
     random:seed(erlang:timestamp()),
-    Remainder = round(Average / 2),
+    Percentage = configuration:percentage(),
+    Remainder = round(Average * Percentage * 0.01),
     Positive = random:uniform(3),
     if
-        Positive < 0 -> Remainder;
+        Remainder =< 0 -> round(Average);
         true -> case Positive of
-            1 -> Average + random:uniform(Remainder);
-            2 -> (-1 * random:uniform(Remainder)) + Average;
-            _ -> Average
+            1 -> round(Average) + random:uniform(Remainder);
+            2 -> (-1 * random:uniform(Remainder)) + round(Average);
+            _ -> round(Average)
         end
     end.

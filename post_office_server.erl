@@ -4,6 +4,16 @@
 -import(client_generator,[generate_client/0]).
 % -record(post_office, {gui}).
 
+
+
+%%TODO
+%generating clients
+%timer in another thread
+%config not working with non positive values
+%liczba dni
+%koniec symulacji - wyswietlenie statystyk
+
+
 init() ->
     spawn(fun() -> start_server() end).
 
@@ -11,6 +21,8 @@ start_server() ->
     Workers_R = cashier_generator:generate_cashiers_receiving(),
     Workers_S = cashier_generator:generate_cashiers_sending(),
     io:format("~nstarted server with workers with pid ~p ~p~n", [Workers_R, Workers_S]),
+    %TODO
+    %init gui with workers
     start_work({Workers_R, Workers_S}).
 
 
@@ -18,9 +30,11 @@ start_work(Workers) ->
     Work_Start_Time = configuration:working_hours_start_min(),
     Clients = {[],[]},
     io:format("starting work ~p~n", [Work_Start_Time]),
+
     work(Work_Start_Time, Clients, Workers).
 
 work(Day_Time, Clients, Workers = {R,S}) ->
+    Interval = configuration:one_minute_in_application(),
     Day_Time_Plus_10_Minutes = Day_Time + 10,
     timer:sleep(1000),
 
@@ -30,7 +44,7 @@ work(Day_Time, Clients, Workers = {R,S}) ->
     Ready_Pids_S = get_states(S, self()),
     io:format("PIDS READY SENDING: ~p~n", [Ready_Pids_S]),
 
-    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(get_clients_length(Clients), Clients),
+    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(new, Clients, Interval, Day_Time),
     io:format("CLIENTS BEFORE SEND: RECEIVING ~p~n", [length(Clients_Before_Send_R)]),
     io:format("CLIENTS BEFORE SEND: SENDING ~p~n", [length(Clients_Before_Send_S)]),
     Clients_Before_Send = {Clients_Before_Send_R, Clients_Before_Send_S},
@@ -43,14 +57,21 @@ work(Day_Time, Clients, Workers = {R,S}) ->
     io:format("TIME: ~p~n", [Day_Time_Plus_10_Minutes]),
     work(Day_Time_Plus_10_Minutes, NotHandledClients, Workers).
 
+
+
 get_clients_length({C_R, C_S}) ->
     length(C_R) + length(C_S).
 
-get_clients(10, Clients) ->
+get_clients(new, Clients, Interval, DayTime) ->
+    ClientsNumber = client_generator:generate_clients_number(DayTime,Interval),
+    RandomizedClientsNumber = random_data:generate(ClientsNumber),
+    io:format("~p", [RandomizedClientsNumber]),
+    get_clients(RandomizedClientsNumber, Clients).
+
+get_clients(0, Clients) ->
     Clients;
 
-get_clients(_, {C_R, C_S}) ->
-
+get_clients(X, {C_R, C_S}) ->
     Client = client_generator:generate_client(),
     {client, Case,_} = Client,
     if
@@ -59,7 +80,8 @@ get_clients(_, {C_R, C_S}) ->
         true -> 
             New_Clients = {C_R, C_S ++ [Client]}
     end,
-    get_clients(get_clients_length(New_Clients), New_Clients).
+    Y = X-1,
+    get_clients(Y, New_Clients).
 
 
 send_client(Client, []) ->

@@ -109,12 +109,12 @@ work(Day_Time, Clients, Workers = {R,S}, Stats, Gui) ->
     Ready_Pids_S = get_states(S, self()),
     % io:format("PIDS READY SENDING: ~p~n", [Ready_Pids_S]),
 
-    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(new, Clients, Day_Time),
+    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(new, Clients, Day_Time, Gui),
     io:format("CLIENTS BEFORE SEND: RECEIVING ~p~n", [length(Clients_Before_Send_R)]),
     io:format("CLIENTS BEFORE SEND: SENDING ~p~n", [length(Clients_Before_Send_S)]),
     Clients_Before_Send = {Clients_Before_Send_R, Clients_Before_Send_S},
 
-    NotHandledClients = handle_clients(Clients_Before_Send, Ready_Pids_S, Ready_Pids_R),
+    NotHandledClients = handle_clients(Clients_Before_Send, Ready_Pids_S, Ready_Pids_R, Gui),
 
     % Current_Clients = send_clients(Clients_Before_Send, Ready_Pids, self()),
     io:format("CLIENTS AFTER SEND: ~p~n", [get_clients_length(NotHandledClients)]),
@@ -127,16 +127,16 @@ work(Day_Time, Clients, Workers = {R,S}, Stats, Gui) ->
 get_clients_length({C_R, C_S}) ->
     length(C_R) + length(C_S).
 
-get_clients(new, Clients,  DayTime) ->
+get_clients(new, Clients,  DayTime, Gui) ->
     ClientsNumber = client_generator:generate_clients_number(DayTime),
     RandomizedClientsNumber = random_data:generate(ClientsNumber),
     io:format("~p~n", [RandomizedClientsNumber]),
-    get_clients(RandomizedClientsNumber, Clients).
+    get_clients(RandomizedClientsNumber, Clients, Gui).
 
-get_clients(0, Clients) ->
+get_clients(0, Clients, Gui) ->
     Clients;
 
-get_clients(X, {C_R, C_S}) ->
+get_clients(X, {C_R, C_S}, Gui) ->
     Client = client_generator:generate_client(),
     {client, Case,_} = Client,
     if
@@ -147,32 +147,35 @@ get_clients(X, {C_R, C_S}) ->
     end,
     %TODO
     %GUI show client that arrived
+    % Gui ! {client, Client},
+
     Y = X-1,
-    get_clients(Y, New_Clients).
+    get_clients(Y, New_Clients, Gui).
 
 
-send_client(Client, []) ->
+send_client(Client, [], Gui) ->
     Client;
 
-send_client(Client, [First_Pid]) ->
+send_client(Client, [First_Pid], Gui) ->
     %TODO
     %GUI send client to worker
     First_Pid ! Client.
 
-send_clients(Clients, []) ->
+send_clients(Clients, [], Gui) ->
     Clients;
 
-send_clients([], _) ->
+send_clients([], _, Gui) ->
     [];
 
-send_clients([First_Client|Rest_Clients], [First_Pid|Rest_Pids]) ->
+send_clients([First_Client|Rest_Clients], [First_Pid|Rest_Pids], Gui) ->
     io:format("~p~n", [First_Client]),
-    send_client(First_Client, [First_Pid]),
-send_clients(Rest_Clients, Rest_Pids).
+    send_client(First_Client, [First_Pid], Gui),
+send_clients(Rest_Clients, Rest_Pids, Gui).
 
-handle_clients({Clients_R, Clients_S}, Ready_Pids_S, Ready_Pids_R) ->
-    Unhandled_Clients_R = send_clients(Clients_R, Ready_Pids_R),
-    Unhandled_Clients_S = send_clients(Clients_S, Ready_Pids_S),
+handle_clients({Clients_R, Clients_S}, Ready_Pids_S, Ready_Pids_R, Gui) ->
+    Unhandled_Clients_R = send_clients(Clients_R, Ready_Pids_R, Gui),
+    Unhandled_Clients_S = send_clients(Clients_S, Ready_Pids_S, Gui),
+    Gui ! {clients, Unhandled_Clients_S, Unhandled_Clients_R},
     {Unhandled_Clients_R, Unhandled_Clients_S}.
 
 

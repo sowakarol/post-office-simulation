@@ -42,7 +42,7 @@ finish(Cashiers, End_Button, Frame, Main) ->
     destroy_cashiers(Cashiers),
     wxWindow:destroy(End_Button),
     wxFrame:setStatusText(Frame, "Simulation ended."), 
-    Main ! {end_work},
+    Main ! {end_simulation},
     end_simulation(Frame).
 
 set_time(CurrentTime, Time_Text) ->

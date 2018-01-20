@@ -14,7 +14,7 @@ average_time_receiving_package()    -> 2.
 
 
 % simulation time
-one_minute_in_application() -> 4. % in seconds
+one_minute_in_application() -> 0.5. % in seconds
 
 %consumers configurations
 % average number IN ONE HOUR

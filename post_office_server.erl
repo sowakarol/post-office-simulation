@@ -2,15 +2,16 @@
 -compile([export_all]).
 -import(cashier_generator,[generate_cashiers_receiving/0,generate_cashiers_receiving/0]).
 -import(client_generator,[generate_client/0]).
-% -record(post_office, {gui}).
-
 
 
 %%TODO
 %config not working with non positive values
 %liczba dni - statystyki na dzień - liczba klientów
+% received X packages, sent Y packages
+
 %przerobienie na aplikacje
 %refactor timera
+%GUI
 
 init() ->
     spawn(fun() -> start_server() end).
@@ -20,7 +21,7 @@ start_server() ->
     Workers_S = cashier_generator:generate_cashiers_sending(),
     io:format("~nstarted server with workers with pid ~p ~p~n", [Workers_R, Workers_S]),
     %TODO
-    %init GUI with workers
+    %GUI init GUI with workers
 
     Clock = spawn(fun() -> postOfficeClock() end),
     start_work({Workers_R, Workers_S}, Clock).
@@ -45,7 +46,8 @@ countTime(CurrentTime, EndTime, Interval, OfficePID) ->
 
 countOneMinute(CurrentTime, EndTime,Interval, OfficePID) ->
     % sleep for app's one minute
-    timer:sleep(1000 * Interval),
+    io:format("~p~n",[Interval]),
+    timer:sleep(round(1000 * Interval)),
     OfficePID ! {time_passed, CurrentTime + 1},
     countTime(CurrentTime + 1, EndTime, Interval, OfficePID).
 
@@ -73,8 +75,6 @@ listen(_, Clients, Workers) ->
 
 
 work(Day_Time, Clients, Workers = {R,S}) ->
-    % Day_Time_Plus_10_Minutes = Day_Time + 10,
-    % timer:sleep(1000),
 
     Ready_Pids_R = get_states(R, self()),
     % io:format("PIDS READY RECEIVE: ~p~n", [Ready_Pids_R]),

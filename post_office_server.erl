@@ -14,7 +14,8 @@
 %GUI
 
 init() ->
-    spawn(fun() -> start_server() end).
+    Server = spawn(fun() -> start_server() end),
+    io:format("-------------SERV ~p", [Server]).
 
 start_server() ->
     Workers_R = cashier_generator:generate_cashiers_receiving(),
@@ -22,9 +23,10 @@ start_server() ->
     io:format("~nstarted server with workers with pid ~p ~p~n", [Workers_R, Workers_S]),
     %TODO
     %GUI init GUI with workers
-
+    Server = self(),
+    Gui = spawn(fun() -> gui:init(5, Server) end),
     Clock = spawn(fun() -> postOfficeClock() end),
-    start_work({Workers_R, Workers_S}, Clock).
+    start_work({Workers_R, Workers_S}, Clock, Gui).
 
 
 postOfficeClock() ->
@@ -52,29 +54,31 @@ countOneMinute(CurrentTime, EndTime,Interval, OfficePID) ->
     countTime(CurrentTime + 1, EndTime, Interval, OfficePID).
 
 
-start_work(Workers, Clock) ->
+start_work(Workers, Clock, Gui) ->
     Work_Start_Time = configuration:working_hours_start_min(),
     Clients = {[],[]},
     io:format("starting work ~p~n", [Work_Start_Time]),
     Clock ! {start_work, self()},
-    listen(Work_Start_Time, Clients, Workers).
+    listen(Work_Start_Time, Clients, Workers, Gui).
 
 
 
 
-listen(_, Clients, Workers) ->
+listen(_, Clients, Workers, Gui) ->
     receive
         {end_work} -> 
-            summarize(Workers);
+            summarize(Workers, Gui),
+            io:format("KONIEC -----------------");
         {time_passed, CurrentTime} ->
             %TODO
             %GUI update TIME
-            work(CurrentTime, Clients, Workers)
+            Gui ! {time_passed, CurrentTime},
+            work(CurrentTime, Clients, Workers, Gui)
     end.
 
 
 
-work(Day_Time, Clients, Workers = {R,S}) ->
+work(Day_Time, Clients, Workers = {R,S}, Gui) ->
 
     Ready_Pids_R = get_states(R, self()),
     % io:format("PIDS READY RECEIVE: ~p~n", [Ready_Pids_R]),
@@ -93,7 +97,7 @@ work(Day_Time, Clients, Workers = {R,S}) ->
     io:format("CLIENTS AFTER SEND: ~p~n", [get_clients_length(NotHandledClients)]),
 
     io:format("TIME: ~p~n", [Day_Time]),
-    listen(Day_Time, NotHandledClients, Workers).
+    listen(Day_Time, NotHandledClients, Workers, Gui).
 
 
 
@@ -168,13 +172,14 @@ get_states(Workers, Self) ->
     ).
 
 
-summarize(Workers) -> 
-    collectInformation(Workers).
+summarize(Workers, Gui) -> 
+    collectInformation(Workers, Gui).
 
-collectInformation({R,T}) ->
+collectInformation({R,T}, Gui) ->
     Result = collect(R,0) + collect(T,0),
     %TODO
     %GUI display results
+    Gui ! {statistics, Result},
     io:format("~nEnded simulation with ~p clients handled~n", [Result]).
 
 

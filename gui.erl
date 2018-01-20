@@ -28,23 +28,27 @@ loop(Wx, Cashiers, Main) ->
     io:format("--waiting in the loop--~n", []),
     receive 
         #wx{id = ?wxID_STOP, event=#wxCommand{type = command_button_clicked}} ->
-            io:format("--ending simulation-- ~n"), 
-            destroy_cashiers(Cashiers),
-            wxWindow:destroy(End_Button),
-            wxFrame:setStatusText(Frame, "Simulation ended."), 
-            Main ! {end_work},
-            end_simulation(Frame);
+            finish(Cashiers, End_Button, Frame, Main);
         {time_passed, CurrentTime} ->
-            Time = get_time(CurrentTime),
-            io:format("czas z gui: ~p", [Time]),
-            wxStaticText:setLabel(Time_Text, "Time: " ++ Time),
-            loop(Wx, Cashiers, Main)
-            ;
+            set_time(CurrentTime, Time_Text),
+            loop(Wx, Cashiers, Main);
         #wx{event=#wxClose{}} ->
             io:format("--closing window ~p-- ~n",[self()]),
             wxWindow:destroy(Frame),
             ok
     end.
+
+finish(Cashiers, End_Button, Frame, Main) ->
+    destroy_cashiers(Cashiers),
+    wxWindow:destroy(End_Button),
+    wxFrame:setStatusText(Frame, "Simulation ended."), 
+    Main ! {end_work},
+    end_simulation(Frame).
+
+set_time(CurrentTime, Time_Text) ->
+    Time = get_time(CurrentTime),
+    wxStaticText:setLabel(Time_Text, "Time: " ++ Time),
+    ok.
 
 get_time(Minutes) ->
     Hour = trunc(Minutes/60),
@@ -61,13 +65,16 @@ end_simulation(Frame) ->
     io:format("--simulation ended--~n"),
     receive
         {statistics, Results} ->
-            io:format("~nEnded simulation with ~p clients handled~n", [Results]),
+            wxStaticText:new(Frame, 0, results(Results), [{pos,{300,100}}]),
             end_simulation(Frame);
         #wx{event=#wxClose{}} ->
             io:format("--closing window ~p-- ~n",[self()]),
             wxWindow:destroy(Frame),
             ok
     end.
+
+results(Results) ->
+    "Ended simulation with " ++ integer_to_list(Results) ++ " clients handled".
 
 destroy_cashiers(List) ->
     lists:foreach(fun(H) -> wxWindow:destroy(H) end, List).

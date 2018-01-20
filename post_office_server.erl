@@ -252,7 +252,7 @@ killWorkers({R,S}, {R_Sum, S_Sum}, Gui) ->
     killWorkers(R,0),
     killWorkers(S,0),
 
-    Gui ! {statistics, R_Sum + S_Sum},
+    Gui ! {statistics, {R_Sum, S_Sum}},
     io:format("~nEnded simulation with ~p clients handled~n", [R_Sum + S_Sum]),
     io:format("~nPackages sent ~p~nPackages Received ~p~n",[S_Sum, R_Sum]).
 

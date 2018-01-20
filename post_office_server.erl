@@ -24,57 +24,82 @@ start_server() ->
     %GUI init GUI with workers
 
     Clock = spawn(fun() -> postOfficeClock() end),
-    start_work({Workers_R, Workers_S}, Clock).
+    start_work({Workers_R, Workers_S}, Clock, []).
 
 
+
+%TIMER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 postOfficeClock() ->
+    Days = configuration:days(),
     StartTime = configuration:working_hours_start_min(),
     EndTime = configuration:working_hours_end_min(),
     Interval = configuration:one_minute_in_application(),
+    startOfficeClock(StartTime,EndTime,Interval, Days).
+
+startOfficeClock(StartTime, EndTime, Interval,Days)->
     receive
         {start_work, OfficePID} ->
-            countTime(StartTime, EndTime, Interval, OfficePID)
+            countTime(StartTime, EndTime, Interval, OfficePID, Days)
     end.
 
 
-countTime(CurrentTime, EndTime, Interval, OfficePID) ->
+countTime(CurrentTime, EndTime, Interval, OfficePID, Days) ->
     if 
-        EndTime > CurrentTime -> countOneMinute(CurrentTime,EndTime, Interval, OfficePID);
-        EndTime =< CurrentTime -> OfficePID ! {end_work}
+        EndTime > CurrentTime -> countOneMinute(CurrentTime,EndTime, Interval, OfficePID, Days);
+        EndTime =< CurrentTime ->
+            NewDays = Days - 1,
+            if
+                NewDays == 0    -> OfficePID ! {end_simulation};
+                true            -> 
+                    OfficePID ! {end_work, self()},
+                    startOfficeClock(configuration:working_hours_start_min(),
+                                    configuration:working_hours_end_min(),
+                                    configuration:one_minute_in_application(),
+                                    NewDays)
+            end
     end.
 
 
-countOneMinute(CurrentTime, EndTime,Interval, OfficePID) ->
+countOneMinute(CurrentTime, EndTime,Interval, OfficePID, Days) ->
     % sleep for app's one minute
     io:format("~p~n",[Interval]),
     timer:sleep(round(1000 * Interval)),
     OfficePID ! {time_passed, CurrentTime + 1},
-    countTime(CurrentTime + 1, EndTime, Interval, OfficePID).
+    countTime(CurrentTime + 1, EndTime, Interval, OfficePID, Days).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-start_work(Workers, Clock) ->
+start_work(Workers, Clock, Stats) ->
     Work_Start_Time = configuration:working_hours_start_min(),
     Clients = {[],[]},
+    say_hello(Workers),
     io:format("starting work ~p~n", [Work_Start_Time]),
     Clock ! {start_work, self()},
-    listen(Work_Start_Time, Clients, Workers).
+    listen(Work_Start_Time, Clients, Workers, Stats).
 
 
-
-
-listen(_, Clients, Workers) ->
+listen(_, Clients, Workers, Stats) ->
     receive
-        {end_work} -> 
-            summarize(Workers);
+        {end_simulation} -> 
+            % synchronized(Workers),
+            summarize(end_simulation,Stats, Workers);
+        {end_work, ClockPID} ->
+            % synchronized(Workers),
+
+            NewSt =  summarize(end_day,Workers),
+            NewStats = addStats(Stats, NewSt),
+            timer:sleep(round(1000*configuration:break_after_day())),
+            start_work(Workers, ClockPID, NewStats);
         {time_passed, CurrentTime} ->
             %TODO
             %GUI update TIME
-            work(CurrentTime, Clients, Workers)
+            work(CurrentTime, Clients, Workers, Stats)
     end.
 
 
 
-work(Day_Time, Clients, Workers = {R,S}) ->
+work(Day_Time, Clients, Workers = {R,S}, Stats) ->
 
     Ready_Pids_R = get_states(R, self()),
     % io:format("PIDS READY RECEIVE: ~p~n", [Ready_Pids_R]),
@@ -93,7 +118,7 @@ work(Day_Time, Clients, Workers = {R,S}) ->
     io:format("CLIENTS AFTER SEND: ~p~n", [get_clients_length(NotHandledClients)]),
 
     io:format("TIME: ~p~n", [Day_Time]),
-    listen(Day_Time, NotHandledClients, Workers).
+    listen(Day_Time, NotHandledClients, Workers, Stats).
 
 
 
@@ -166,26 +191,91 @@ get_states(Workers, Self) ->
             New_List
         end, [], Workers
     ).
+% synchronized(Workers) ->
+%     synchronize(Workers).
+
+% synchronize([]) -> ;
+
+% synchronize([First|T]) ->
+%     First ! {goodbye, self()},
+%     receive
+%         {goodbye,First} -> synchronize(T)
+%     end.
 
 
-summarize(Workers) -> 
-    collectInformation(Workers).
+addStats(List, {NR,NS}) ->
+    [{NR,NS}] ++ List.
 
-collectInformation({R,T}) ->
-    Result = collect(R,0) + collect(T,0),
+summarize(end_day,Workers) ->
+    collectInformation(end_day, Workers).
+
+
+summarize(end_simulation,Stats, Workers) -> 
+    %Do sth with Stats
+    {DR,DS} = collectInformation(Workers),
+    NewStats = addStats(Stats,{DR,DS}),
+    io:format("~p~n",[NewStats]),
+    Sum = displayStats(NewStats),
+    killWorkers(Workers, Sum).
+
+collectInformation(end_day, {R,S}) ->
+    Result = collectInformation({R,S}),
+    io:format("Done"),
+    Result.
+
+collectInformation({R,S}) ->
+    ResultReceived = collect(R,0),
+    ResultSent = collect(S,0),
+    Result = ResultReceived + ResultSent,
+    io:format("~p", [Result]),
     %TODO
     %GUI display results
-    io:format("~nEnded simulation with ~p clients handled~n", [Result]).
+    io:format("~nEnded day with ~p clients handled~n", [Result]),
+    io:format("~nPackages sent ~p~nPackages Received ~p~n",[ResultSent, ResultReceived]),
+    {ResultReceived, ResultSent}.
 
 
 collect([], X) -> X;
 
+
 collect([First|T], X) ->
+    First ! {end_day, self()},
+    receive
+        {end_of_work,Y,First} -> 
+            io:format("~p ~p~n",[First,Y]),
+            collect(T,X + Y)
+    end.
+
+killWorkers({R,S}, {R_Sum, S_Sum}) ->
+    killWorkers(R,0),
+    killWorkers(S,0),
+    %TODO
+    %GUI display results
+    io:format("~nEnded simulation with ~p clients handled~n", [R_Sum + S_Sum]),
+    io:format("~nPackages sent ~p~nPackages Received ~p~n",[S_Sum, R_Sum]);
+
+killWorkers([], X) -> X;
+
+killWorkers([First|T], X) ->
     First ! {terminate, self()},
     receive
-        {end_of_work,Y,First} -> collect(T,X + Y);
-        _ -> collect(T, X)
+        {end_of_work,Y,First} -> killWorkers(T,X + Y);
+        _ -> killWorkers(T, X)
     end.
+
+displayStats(Stats) ->
+    displayStats(Stats, configuration:days(), {0,0}).
+
+displayStats([], _, Sum) -> Sum;
+
+% displayStats([{R,S}], X) ->
+%     io:format("On Day ~p : ~p packages received, ~p packages sent", [X, R, S]),
+%     displayStats([], X - 1);
+
+displayStats([{R,S}|T], X, {R_Sum, S_Sum}) ->
+    io:format("~nOn Day ~p : ~p packages received, ~p packages sent~n", [X, R, S]),
+    displayStats(T, X -1, {R_Sum + R, S_Sum + S}).
+
 
 
 % TODO

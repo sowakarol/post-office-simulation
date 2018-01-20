@@ -25,8 +25,9 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
         {handled_client}  ->
             io:format("Cashier handled ~p clients~n", [HandleClients + 1]),
             ready(Self#cashier{state = ready, handled_clients = HandleClients + 1});
-        {terminate, _} ->
-            io:format("Terminating cashier"), ok;
+        {terminate, _From} ->
+            _From ! {end_of_work, HandleClients, self()},
+            io:format("Terminating cashier~n"), ok;
         W ->
             io:format("Not understanding ~p ~n", [W]),
             ready(Self)

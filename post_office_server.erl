@@ -7,12 +7,10 @@
 
 
 %%TODO
-%timer in another thread
 %config not working with non positive values
-%liczba dni
+%liczba dni - statystyki na dzień - liczba klientów
 %przerobienie na aplikacje
-%koniec symulacji - wyswietlenie statystyk
-
+%refactor timera
 
 init() ->
     spawn(fun() -> start_server() end).
@@ -22,7 +20,7 @@ start_server() ->
     Workers_S = cashier_generator:generate_cashiers_sending(),
     io:format("~nstarted server with workers with pid ~p ~p~n", [Workers_R, Workers_S]),
     %TODO
-    %init gui with workers
+    %init GUI with workers
 
     Clock = spawn(fun() -> postOfficeClock() end),
     start_work({Workers_R, Workers_S}, Clock).
@@ -67,7 +65,8 @@ listen(_, Clients, Workers) ->
         {end_work} -> 
             summarize(Workers);
         {time_passed, CurrentTime} ->
-            %updateGUI with TIME
+            %TODO
+            %GUI update TIME
             work(CurrentTime, Clients, Workers)
     end.
 
@@ -119,6 +118,8 @@ get_clients(X, {C_R, C_S}) ->
         true -> 
             New_Clients = {C_R, C_S ++ [Client]}
     end,
+    %TODO
+    %GUI show client that arrived
     Y = X-1,
     get_clients(Y, New_Clients).
 
@@ -127,6 +128,8 @@ send_client(Client, []) ->
     Client;
 
 send_client(Client, [First_Pid]) ->
+    %TODO
+    %GUI send client to worker
     First_Pid ! Client.
 
 send_clients(Clients, []) ->
@@ -136,7 +139,7 @@ send_clients([], _) ->
     [];
 
 send_clients([First_Client|Rest_Clients], [First_Pid|Rest_Pids]) ->
-    io:format("~p", [First_Client]),
+    io:format("~p~n", [First_Client]),
     send_client(First_Client, [First_Pid]),
 send_clients(Rest_Clients, Rest_Pids).
 
@@ -144,26 +147,6 @@ handle_clients({Clients_R, Clients_S}, Ready_Pids_S, Ready_Pids_R) ->
     Unhandled_Clients_R = send_clients(Clients_R, Ready_Pids_R),
     Unhandled_Clients_S = send_clients(Clients_S, Ready_Pids_S),
     {Unhandled_Clients_R, Unhandled_Clients_S}.
-
-    
-
-% send_clients([First_Client = {client, ClientCase, _}|Rest_Clients], [First_Pid_R|Rest_Pids_R],[First_Pid_S|Rest_Pids_S] Self) ->
-%     io:format("~p", [First_Client]),
-%     if
-%         ClientCase == 
-%         ClientCase == receive_package -> Client = send_clients(First_Client, )
-
-
-%     First_Pid ! {check_case, self(), ClientCase},
-%     receive
-%         {send_case, First_Client, case_different} -> send_clients(First_Client, Rest_Pids, Self);
-%         {send_case, First_Client, case_equal} -> io:format("client sent");
-%         _ -> io:format("ERROR")
-%     end,
-%     send_clients(Rest_Clients, Rest_Pids, Self).
-
-
-
 
 
 get_states(Workers, Self) ->
@@ -185,11 +168,27 @@ get_states(Workers, Self) ->
     ).
 
 
-summarize(_) -> io:format("end").
+summarize(Workers) -> 
+    collectInformation(Workers).
+
+collectInformation({R,T}) ->
+    Result = collect(R,0) + collect(T,0),
+    %TODO
+    %GUI display results
+    io:format("~nEnded simulation with ~p clients handled~n", [Result]).
+
+
+collect([], X) -> X;
+
+collect([First|T], X) ->
+    First ! {terminate, self()},
+    receive
+        {end_of_work,Y,First} -> collect(T,X + Y);
+        _ -> collect(T, X)
+    end.
 
 
 % TODO
-% rozroznianie okienek i spraw od klientów
 % GUI doszlifowanie - button jakiś do zamykania, pokazywanie statystyk, pokazywanie godziny
 % wyświetlenie statystyk
 % liczba dni symulacji w konfiguracji

@@ -48,6 +48,7 @@ startOfficeClock(StartTime, EndTime, Interval,Days)->
 
 countTime(CurrentTime, EndTime, Interval, OfficePID, Days) ->
     if 
+
         EndTime > CurrentTime -> countOneMinute(CurrentTime,EndTime, Interval, OfficePID, Days);
         EndTime =< CurrentTime ->
             NewDays = Days - 1,
@@ -68,6 +69,10 @@ countOneMinute(CurrentTime, EndTime,Interval, OfficePID, Days) ->
     io:format("~p~n",[Interval]),
     timer:sleep(round(1000 * Interval)),
     OfficePID ! {time_passed, CurrentTime + 1},
+    receive
+        {ok, OfficePID} -> ok;
+        {kill_clock, OfficePID} -> exit(normal)
+    end,
     countTime(CurrentTime + 1, EndTime, Interval, OfficePID, Days).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -77,13 +82,14 @@ start_work(Workers, Clock, Stats, Gui) ->
     Clients = {[],[]},
     io:format("starting work ~p~n", [Work_Start_Time]),
     Clock ! {start_work, self()},
-    listen(Work_Start_Time, Clients, Workers, Stats, Gui).
+    listen(Work_Start_Time, Clients, Workers, Stats, Gui, Clock).
 
 
-listen(_, Clients, Workers, Stats, Gui) ->
+listen(_, Clients, Workers, Stats, Gui, Clock) ->
     receive
         {end_simulation} -> 
             % synchronized(Workers),
+            synchronize(Clock),
             summarize(end_simulation,Stats, Workers, Gui);
         {end_work, ClockPID} ->
             % synchronized(Workers),
@@ -96,12 +102,23 @@ listen(_, Clients, Workers, Stats, Gui) ->
             %TODO
             %GUI update TIME
             Gui ! {time_passed, CurrentTime},
-            work(CurrentTime, Clients, Workers, Stats, Gui)
+            Clock ! {ok, self()},
+            work(CurrentTime, Clients, Workers, Stats, Gui, Clock)
     end.
 
 
 
-work(Day_Time, Clients, Workers = {R,S}, Stats, Gui) ->
+synchronize(Clock) ->
+    Interval = configuration:one_minute_in_application(),
+    receive
+        {time_passed, _} -> 
+            Clock ! {kill_clock, self()}
+    after 
+        round(Interval * 3) -> ok
+    end.
+
+
+work(Day_Time, Clients, Workers = {R,S}, Stats, Gui, Clock) ->
 
     Ready_Pids_R = get_states(R, self()),
     % io:format("PIDS READY RECEIVE: ~p~n", [Ready_Pids_R]),
@@ -120,7 +137,7 @@ work(Day_Time, Clients, Workers = {R,S}, Stats, Gui) ->
     io:format("CLIENTS AFTER SEND: ~p~n", [get_clients_length(NotHandledClients)]),
 
     io:format("TIME: ~p~n", [Day_Time]),
-    listen(Day_Time, NotHandledClients, Workers, Stats, Gui).
+    listen(Day_Time, NotHandledClients, Workers, Stats, Gui, Clock).
 
 
 

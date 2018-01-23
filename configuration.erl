@@ -3,7 +3,7 @@
 
 % post office configuration
 number_of_cashier_receiving()   -> 3.   % their duty is to handle clients that want to receive a package
-number_of_cashier_sending()     -> 2.   % their duty is to handle clients that want to send a package
+number_of_cashier_sending()     -> 3.   % their duty is to handle clients that want to send a package
 working_hours_start()           -> 9.   % 09:00 
 working_hours_end()             -> 10.  % 10:00
 days()                          -> 2.   % how many days post office will be simulated

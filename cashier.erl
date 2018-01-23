@@ -1,7 +1,7 @@
 -module(cashier).
 -compile([export_all]).
 
--record(cashier, {state = ready, handled_clients = 0, cashierCase = everything, day = 1}).
+-record(cashier, {state = ready, handled_clients = 0, cashierCase = everything, day = 1, gui = gui}).
 
 init(Case)->
     spawn(fun() -> start_working(Case, 1) end).
@@ -14,6 +14,9 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
     % io:format("~p~n",[State]),
     % monitor
     receive
+        {gui, GuiPid} -> 
+            io:format("gui ~p", [GuiPid]),
+            ready(Self#cashier{gui = GuiPid});
         {client, _Case, Time} -> 
             io:format("preparing to handle~n"),
             Pid = spawn(fun() -> handle_client() end),

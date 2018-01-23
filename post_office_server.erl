@@ -25,10 +25,17 @@ start_server() ->
     %GUI init GUI with workers
     Server = self(),
     Gui = spawn(fun() -> gui:init({Workers_R, Workers_S}, Server) end),
+    sendGuiToWorkers(Workers_R, Gui),
+    sendGuiToWorkers(Workers_S, Gui),
+
     Clock = spawn(fun() -> postOfficeClock() end),
     start_work({Workers_R, Workers_S}, Clock, [],Gui).
 
-
+sendGuiToWorkers(Workers, Gui) ->
+    lists:foreach(fun(Pid) -> 
+                    Pid ! {gui, Gui}
+                  end, Workers
+    ).
 
 %TIMER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

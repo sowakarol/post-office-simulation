@@ -111,17 +111,17 @@ init_cashiers({_, Frame, _, _, _, _} = Wx, [], [H|T], CashiersNumber, X,Y, X_Lim
     List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Send | ", [{pos,{X,Y}}])]),
     if 
         X > X_Limit ->
-            init_cashiers(Wx,[],T, CashiersNumber-1,0, Y + 20, X_Limit, List2);
+            init_cashiers(Wx,[],T, CashiersNumber,0, Y + 20, X_Limit, List2);
         true ->
-            init_cashiers(Wx,[],T, CashiersNumber-1,X + 60, Y, X_Limit, List2)
+            init_cashiers(Wx,[],T, CashiersNumber,X + 60, Y, X_Limit, List2)
     end;
 init_cashiers({_, Frame, _, _, _, _} = Wx, [H|T], Send, CashiersNumber, X,Y, X_Limit, List) ->
     List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Receive | ", [{pos,{X,Y}}])]),
     if 
         X > X_Limit ->
-            init_cashiers(Wx,T,Send, CashiersNumber-1,0, Y + 20, X_Limit, List2);
+            init_cashiers(Wx,T,Send, CashiersNumber,0, Y + 20, X_Limit, List2);
         true ->
-            init_cashiers(Wx,T,Send, CashiersNumber-1,X + 60, Y, X_Limit, List2)
+            init_cashiers(Wx,T,Send, CashiersNumber,X + 60, Y, X_Limit, List2)
     end.
 
 init_clients(Clients_Number) ->

@@ -24,7 +24,7 @@ start_server() ->
     %TODO
     %GUI init GUI with workers
     Server = self(),
-    Gui = spawn(fun() -> gui:init(5, Server) end),
+    Gui = spawn(fun() -> gui:init({Workers_R, Workers_S}, Server) end),
     Clock = spawn(fun() -> postOfficeClock() end),
     start_work({Workers_R, Workers_S}, Clock, [],Gui).
 

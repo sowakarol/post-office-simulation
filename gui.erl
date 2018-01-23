@@ -2,9 +2,10 @@
 -compile([export_all]).
 -include_lib("wx/include/wx.hrl").
 
-init(Cashiers_Number, Main) ->
+init({Receive, Send}, Main) ->
     Wx = make_window(),
-    Cashiers = init_cashiers(Wx, Cashiers_Number,0,0,980,[]),
+    io:format("WDDDDD ~p ~p", [Receive, Send]),
+    Cashiers = init_cashiers(Wx, Receive, Send, length(Receive), 0,0,980,[]),
     io:format("-----------GUI ~p", [Main]),
     % show_clients(Wx, init_clients(10), 0, 100),
     loop(Wx, Cashiers, Main, []).
@@ -12,8 +13,8 @@ init(Cashiers_Number, Main) ->
 make_window() ->
     Server = wx:new(),
     Frame = wxFrame:new(Server, -1, "Post office simulation", [{size,{1000,500}}]),
-    End_Button = wxButton:new(Frame, ?wxID_STOP, [{label, "End simulation"}, {pos, {300,20}}]),
-    Time_Text = wxStaticText:new(Frame, 0, "Time", [{pos,{300,0}}]),
+    End_Button = wxButton:new(Frame, ?wxID_STOP, [{label, "End simulation"}, {pos, {300,70}}]),
+    Time_Text = wxStaticText:new(Frame, 0, "Time", [{pos,{300,50}}]),
     ClientsR = wxStaticText:new(Frame, 0, "", [{pos, {0, 200}}]),
     ClientsS = wxStaticText:new(Frame, 0, "", [{pos, {100, 200}}]),
     wxFrame:createStatusBar(Frame),
@@ -105,14 +106,22 @@ results({R_Sum, S_Sum}) ->
 destroy_cashiers(List) ->
     lists:foreach(fun(H) -> wxWindow:destroy(H) end, List).
 
-init_cashiers(_, 0,_,_,_, List) -> List;
-init_cashiers({_, Frame, _, _, _, _} = Wx, CashiersNumber, X,Y, X_Limit, List) ->
-    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "X", [{pos,{X,Y}}])]),
+init_cashiers(_, [], [],_, _,_,_, List) -> List;
+init_cashiers({_, Frame, _, _, _, _} = Wx, [], [H|T], CashiersNumber, X,Y, X_Limit, List) ->
+    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Send | ", [{pos,{X,Y}}])]),
     if 
         X > X_Limit ->
-            init_cashiers(Wx,CashiersNumber - 1, 0, Y + 20, X_Limit, List2);
+            init_cashiers(Wx,[],T, CashiersNumber-1,0, Y + 20, X_Limit, List2);
         true ->
-            init_cashiers(Wx,CashiersNumber - 1, X + 20, Y, X_Limit, List2)
+            init_cashiers(Wx,[],T, CashiersNumber-1,X + 60, Y, X_Limit, List2)
+    end;
+init_cashiers({_, Frame, _, _, _, _} = Wx, [H|T], Send, CashiersNumber, X,Y, X_Limit, List) ->
+    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Receive | ", [{pos,{X,Y}}])]),
+    if 
+        X > X_Limit ->
+            init_cashiers(Wx,T,Send, CashiersNumber-1,0, Y + 20, X_Limit, List2);
+        true ->
+            init_cashiers(Wx,T,Send, CashiersNumber-1,X + 60, Y, X_Limit, List2)
     end.
 
 init_clients(Clients_Number) ->

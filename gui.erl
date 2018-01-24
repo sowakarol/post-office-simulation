@@ -47,10 +47,7 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             show_client_at_cashier(CashierPid, Cashiers),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {cashier, done, CashierPid} ->
-            delete_client(CashierPid, Cashiers),
-            loop(Wx, Cashiers, Main, ClientList, RS);
-        {end_of_work, CashierPid} ->
-            delete_client(CashierPid, ClientList),
+            delete_client_at_cashier(CashierPid, Cashiers),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {end_day} ->
             lists:foreach(fun(X) -> 
@@ -67,30 +64,22 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             ok
     end.
 
-delete_client(Cashier, Cashiers) ->
+delete_client_at_cashier(Cashier, Cashiers) ->
+    handle_cashier(Cashier,Cashiers, "").
+show_client_at_cashier(Cashier, Cashiers) ->
+    handle_cashier(Cashier, Cashiers, "\nKlient").
+handle_cashier(Cashier, Cashiers, End) ->
     {CashierPid, Case} = Cashier,
     lists:foreach(fun(X)->
                     {Pid, Wx_Text} = X,
                     if Pid == CashierPid ->
-                        wxStaticText:setLabel(Wx_Text, cashier_out(Case));
+                        wxStaticText:setLabel(Wx_Text, cashier_out(Case) ++ End);
                     true ->
                         ok
                     end
                 end, Cashiers
     ).
 
-show_client_at_cashier(Cashier, Cashiers) ->
-    {CashierPid, Case} = Cashier,
-    io:format("~p", [Case]),
-    lists:foreach(fun(X)->
-                    {Pid, Wx_Text} = X,
-                    if Pid == CashierPid ->
-                        wxStaticText:setLabel(Wx_Text, cashier_out(Case) ++ "\nKlient");
-                    true ->
-                        ok
-                    end
-                end, Cashiers
-    ).
 cashier_out(send_package) ->
     "Send |";
 cashier_out(receive_package) ->

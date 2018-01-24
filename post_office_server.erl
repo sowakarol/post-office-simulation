@@ -26,8 +26,6 @@ start_server() ->
     Workers_R = cashier_generator:generate_cashiers_receiving(),
     Workers_S = cashier_generator:generate_cashiers_sending(),
     io:format("~nstarted server with workers with pid ~p ~p~n", [Workers_R, Workers_S]),
-    %TODO
-    %GUI init GUI with workers
     Server = self(),
     Gui = spawn(fun() -> gui:init({Workers_R, Workers_S}, Server) end),
     sendGuiToWorkers(Workers_R, Gui),
@@ -57,7 +55,6 @@ startOfficeClock(StartTime, EndTime, Interval,Days)->
             countTime(StartTime, EndTime, Interval, OfficePID, Days)
     end.
 
-
 countTime(CurrentTime, EndTime, Interval, OfficePID, Days) ->
     if 
 
@@ -69,9 +66,9 @@ countTime(CurrentTime, EndTime, Interval, OfficePID, Days) ->
                 true            -> 
                     OfficePID ! {end_work, self()},
                     startOfficeClock(configuration:working_hours_start_min(),
-                                    configuration:working_hours_end_min(),
-                                    configuration:one_minute_in_application(),
-                                    NewDays)
+                                     configuration:working_hours_end_min(),
+                                     configuration:one_minute_in_application(),
+                                     NewDays)
             end
     end.
 
@@ -112,14 +109,10 @@ listen(_, Clients, Workers, Stats, Gui, Clock) ->
             timer:sleep(round(1000*configuration:break_after_day())),
             start_work(Workers, ClockPID, NewStats, Gui);
         {time_passed, CurrentTime} ->
-            %TODO
-            %GUI update TIME
             Gui ! {time_passed, CurrentTime},
             Clock ! {ok, self()},
             work(CurrentTime, Clients, Workers, Stats, Gui, Clock)
     end.
-
-
 
 synchronize(Clock) ->
     Interval = configuration:one_minute_in_application(),
@@ -130,43 +123,35 @@ synchronize(Clock) ->
         round(Interval * 3) -> ok
     end.
 
-
 work(Day_Time, Clients, Workers = {R,S}, Stats, Gui, Clock) ->
 
     Ready_Pids_R = get_states(R, self()),
-    % io:format("PIDS READY RECEIVE: ~p~n", [Ready_Pids_R]),
-
     Ready_Pids_S = get_states(S, self()),
-    % io:format("PIDS READY SENDING: ~p~n", [Ready_Pids_S]),
 
-    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(new, Clients, Day_Time, Gui),
+    {Clients_Before_Send_R, Clients_Before_Send_S} = get_clients(new, Clients, Day_Time),
     io:format("CLIENTS BEFORE SEND: RECEIVING ~p~n", [length(Clients_Before_Send_R)]),
     io:format("CLIENTS BEFORE SEND: SENDING ~p~n", [length(Clients_Before_Send_S)]),
     Clients_Before_Send = {Clients_Before_Send_R, Clients_Before_Send_S},
 
     NotHandledClients = handle_clients(Clients_Before_Send, Ready_Pids_S, Ready_Pids_R, Gui),
-
-    % Current_Clients = send_clients(Clients_Before_Send, Ready_Pids, self()),
     io:format("CLIENTS AFTER SEND: ~p~n", [get_clients_length(NotHandledClients)]),
 
     io:format("TIME: ~p~n", [Day_Time]),
     listen(Day_Time, NotHandledClients, Workers, Stats, Gui, Clock).
 
-
-
 get_clients_length({C_R, C_S}) ->
     length(C_R) + length(C_S).
 
-get_clients(new, Clients,  DayTime, Gui) ->
+get_clients(new, Clients,  DayTime) ->
     ClientsNumber = client_generator:generate_clients_number(DayTime),
     RandomizedClientsNumber = random_data:generate(ClientsNumber),
     io:format("~p~n", [RandomizedClientsNumber]),
-    get_clients(RandomizedClientsNumber, Clients, Gui).
+    get_clients(RandomizedClientsNumber, Clients).
 
-get_clients(0, Clients, Gui) ->
+get_clients(0, Clients) ->
     Clients;
 
-get_clients(X, {C_R, C_S}, Gui) ->
+get_clients(X, {C_R, C_S}) ->
     Client = client_generator:generate_client(),
     {client, Case,_} = Client,
     if
@@ -175,36 +160,30 @@ get_clients(X, {C_R, C_S}, Gui) ->
         true -> 
             New_Clients = {C_R, C_S ++ [Client]}
     end,
-    %TODO
-    %GUI show client that arrived
-    % Gui ! {client, Client},
-
     Y = X-1,
-    get_clients(Y, New_Clients, Gui).
+    get_clients(Y, New_Clients).
 
 
-send_client(Client, [], Gui) ->
+send_client(Client, []) ->
     Client;
 
-send_client(Client, [First_Pid], Gui) ->
-    %TODO
-    %GUI send client to worker
+send_client(Client, [First_Pid]) ->
     First_Pid ! Client.
 
-send_clients(Clients, [], Gui) ->
+send_clients(Clients, []) ->
     Clients;
 
-send_clients([], _, Gui) ->
+send_clients([], _) ->
     [];
 
-send_clients([First_Client|Rest_Clients], [First_Pid|Rest_Pids], Gui) ->
+send_clients([First_Client|Rest_Clients], [First_Pid|Rest_Pids]) ->
     io:format("~p~n", [First_Client]),
-    send_client(First_Client, [First_Pid], Gui),
-send_clients(Rest_Clients, Rest_Pids, Gui).
+    send_client(First_Client, [First_Pid]),
+send_clients(Rest_Clients, Rest_Pids).
 
 handle_clients({Clients_R, Clients_S}, Ready_Pids_S, Ready_Pids_R, Gui) ->
-    Unhandled_Clients_R = send_clients(Clients_R, Ready_Pids_R, Gui),
-    Unhandled_Clients_S = send_clients(Clients_S, Ready_Pids_S, Gui),
+    Unhandled_Clients_R = send_clients(Clients_R, Ready_Pids_R),
+    Unhandled_Clients_S = send_clients(Clients_S, Ready_Pids_S),
     Gui ! {clients, Unhandled_Clients_S, Unhandled_Clients_R},
     {Unhandled_Clients_R, Unhandled_Clients_S}.
 
@@ -237,7 +216,6 @@ get_states(Workers, Self) ->
 %         {goodbye,First} -> synchronize(T)
 %     end.
 
-
 addStats(List, {NR,NS}) ->
     [{NR,NS}] ++ List.
 
@@ -263,15 +241,11 @@ collectInformation({R,S}) ->
     ResultSent = collect(S,0),
     Result = ResultReceived + ResultSent,
     io:format("~p", [Result]),
-    %TODO
-    %GUI display results
     io:format("~nEnded day with ~p clients handled~n", [Result]),
     io:format("~nPackages sent ~p~nPackages Received ~p~n",[ResultSent, ResultReceived]),
     {ResultReceived, ResultSent}.
 
-
 collect([], X) -> X;
-
 
 collect([First|T], X) ->
     First ! {end_day, self()},
@@ -310,10 +284,3 @@ displayStats([], _, Sum) -> Sum;
 displayStats([{R,S}|T], X, {R_Sum, S_Sum}) ->
     io:format("~nOn Day ~p : ~p packages received, ~p packages sent~n", [X, R, S]),
     displayStats(T, X -1, {R_Sum + R, S_Sum + S}).
-
-
-
-% TODO
-% GUI doszlifowanie - button jakiś do zamykania, pokazywanie statystyk, pokazywanie godziny
-% wyświetlenie statystyk
-% liczba dni symulacji w konfiguracji

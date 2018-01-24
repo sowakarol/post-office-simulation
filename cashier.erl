@@ -1,5 +1,5 @@
 -module(cashier).
--compile([export_all]).
+-export([init/1]).
 
 -record(cashier, {state = ready, handled_clients = 0, cashierCase = everything, day = 1, gui = gui}).
 
@@ -23,7 +23,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
         {client, _Case, Time} -> 
             io:format("preparing to handle~n"),
             Gui ! {cashier, {self(), Case}},
-            Pid = spawn(fun() -> handle_client(Gui, self(), Case) end),
+            Pid = spawn(fun() -> handle_client() end),
             Pid ! {client, self(), _Case, Time, Day},
             ready(Self#cashier{state = busy});
         {get_state, _From} ->
@@ -32,7 +32,6 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
         {handled_client, D}  ->
             if 
                 D /= Day -> 
-                    io:format("elo"),
                     Gui ! {cashier, done, {self(), Case}},
                     ready(Self#cashier{state = State});
                 true ->
@@ -56,7 +55,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
     end.
 
 %Simulation Time - one minute is equal to 5 seconds
-handle_client(Gui, ParId, Case) ->
+handle_client() ->
     receive
         {client, Pid, _, Time, Day} ->
             % io:format("serving~n"),
@@ -65,9 +64,6 @@ handle_client(Gui, ParId, Case) ->
             % io:format("Client was handled after ~p minutes~n", [Time]),
             Pid ! {handled_client, Day}
         end.
-
-take_a_break(Time) ->
-    timer:sleep(Time).
 
 
 % terminate(Self = #cashier{handled_clients = X}) ->

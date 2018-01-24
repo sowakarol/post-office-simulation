@@ -1,5 +1,5 @@
 -module(gui).
--compile([export_all]).
+-export([init/2]).
 -include_lib("wx/include/wx.hrl").
 
 init({Receive, Send}, Main) ->
@@ -26,7 +26,7 @@ make_window() ->
     {Server, Frame, End_Button, Time_Text, ClientsR, ClientsS}.
 
 loop(Wx, Cashiers, Main, ClientList, RS) ->
-    {Server, Frame, End_Button, Time_Text, ClientsR, ClientsS} = Wx,
+    {_, Frame, End_Button, Time_Text, ClientsR, ClientsS} = Wx,
     io:format("--waiting in the loop--~n", []),
     receive 
         #wx{id = ?wxID_STOP, event=#wxCommand{type = command_button_clicked}} ->
@@ -44,7 +44,6 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             wxStaticText:setLabel(ClientsS, CSList),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {cashier, CashierPid} ->
-            io:format("CASHIER ~p", [CashierPid]),
             show_client_at_cashier(CashierPid, Cashiers),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {cashier, done, CashierPid} ->
@@ -54,9 +53,8 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             delete_client(CashierPid, ClientList),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {end_day} ->
-            io:format("endday"),
             lists:foreach(fun(X) -> 
-                {Pid, WxText} = X, 
+                {_, WxText} = X, 
                 wxStaticText:setLabel(WxText, ""),
                 wxStaticText:destroy(WxText)
                 end, Cashiers),
@@ -148,14 +146,13 @@ end_simulation(Frame) ->
 
 results({R_Sum, S_Sum}) ->
     "Ended simulation with:\n" ++ 
-    % integer_to_list(Time) ++ " time simulated\n" ++ 
     integer_to_list(R_Sum+S_Sum) ++ " clients handled\n" ++
     integer_to_list(S_Sum) ++ " packages sent\n" ++
     integer_to_list(R_Sum) ++ " packages received\n".
 
 destroy_cashiers(List) ->
     lists:foreach(fun(H) -> 
-        {Pid, Wx_Text} = H,
+        {_, Wx_Text} = H,
         wxWindow:destroy(Wx_Text) end, List).
 
 init_cashiers(_, [], [],_, _,_,_, List) -> List;
@@ -177,19 +174,4 @@ init_cashiers({_, Frame, _, _, _, _} = Wx, [H|T], Send, CashiersNumber, X,Y, X_L
         true ->
             init_cashiers(Wx,T,Send, CashiersNumber,X + 60, Y, X_Limit, List2)
     end.
-
-init_clients(Clients_Number) ->
-    [X || X <- lists:seq(0,Clients_Number)].
-
-show_clients({_, Frame, _, _} = Wx, [H|T], X, Y) ->
-    wxStaticText:new(Frame, 0, "C", [{pos,{X,Y}}]),
-    timer:sleep(1000),
-    show_clients(Wx, T, X, Y + 20);
-show_clients(_, [], _, _) -> ok.
-
-clear_clients(F, [H|T], X, Y) ->
-    wxStaticText:new(F, 0, "X", [{pos,{X,Y}}]),
-    timer:sleep(1000),
-    clear_clients(F, T, X, Y + 20);
-clear_clients(_, [], _, _) -> ok.
 

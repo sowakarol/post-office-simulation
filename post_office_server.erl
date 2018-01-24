@@ -14,8 +14,13 @@
 %GUI
 
 init() ->
-    Server = spawn(fun() -> start_server() end),
-    io:format("-------------SERV ~p", [Server]).
+    try
+        cf:init(),
+        Server = spawn(fun() -> start_server() end),
+        io:format("-------------SERV ~p", [Server])
+    catch
+        Exception:Reason -> {caught, Exception, Reason}
+    end.
 
 start_server() ->
     Workers_R = cashier_generator:generate_cashiers_receiving(),

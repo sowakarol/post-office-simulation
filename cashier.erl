@@ -11,6 +11,10 @@ start_working(Case, Day) ->
     Self = #cashier{state = ready, cashierCase = Case, handled_clients = 0},
     ready(Self#cashier{state = ready, day = Day}).
 
+start_working(Case, Day, Gui) -> 
+    Self = #cashier{state = ready, cashierCase = Case, handled_clients = 0},
+    ready(Self#cashier{state = ready, day = Day, gui = Gui}).
+
 ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCase = Case, day = Day, gui = Gui}) ->
     % monitor
     receive
@@ -31,9 +35,9 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
             _From ! {send_state, self(), State},
             ready(Self);   
         {handled_client, D}  ->
-            Gui ! {cashier, done, {Case, self()}},
             if 
                 D /= Day -> ready(Self#cashier{state = State});
+                % Gui ! {cashier, done, {Case, self()}};
                 true ->
                     io:format("Cashier handled ~p clients~n", [HandleClients + 1]),
                     ready(Self#cashier{state = ready, handled_clients = HandleClients + 1})
@@ -41,7 +45,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
         {end_day, _From} ->
             _From ! {end_of_work, HandleClients, self()},
             io:format("sleeeping~n"),
-            start_working(Case, Day + 1);
+            start_working(Case, Day + 1, Gui);
         % {goodbye, _} ->
         %     {goodbye, self()},
         %     ready(Self).

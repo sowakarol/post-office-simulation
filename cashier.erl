@@ -1,6 +1,5 @@
 -module(cashier).
 -compile([export_all]).
--include_lib("wx/include/wx.hrl").
 
 -record(cashier, {state = ready, handled_clients = 0, cashierCase = everything, day = 1, gui = gui}).
 
@@ -18,17 +17,13 @@ start_working(Case, Day, Gui) ->
 ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCase = Case, day = Day, gui = Gui}) ->
     % monitor
     receive
-        % {static_text, T} ->
-            % io:format("siemano"),
-            % io:format("~p elko", [T]),
-            % ok;
         {gui, GuiPid} -> 
             io:format("gui ~p", [GuiPid]),
             ready(Self#cashier{gui = GuiPid});
         {client, _Case, Time} -> 
             io:format("preparing to handle~n"),
             Gui ! {cashier, {self(), Case}},
-            Pid = spawn(fun() -> handle_client() end),
+            Pid = spawn(fun() -> handle_client(Gui, self(), Case) end),
             Pid ! {client, self(), _Case, Time, Day},
             ready(Self#cashier{state = busy});
         {get_state, _From} ->
@@ -36,15 +31,17 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
             ready(Self);   
         {handled_client, D}  ->
             if 
-                D /= Day -> ready(Self#cashier{state = State});
-                % Gui ! {cashier, done, {Case, self()}};
+                D /= Day -> 
+                    io:format("elo"),
+                    Gui ! {cashier, done, {self(), Case}},
+                    ready(Self#cashier{state = State});
                 true ->
+                    Gui ! {cashier, done, {self(), Case}},
                     io:format("Cashier handled ~p clients~n", [HandleClients + 1]),
                     ready(Self#cashier{state = ready, handled_clients = HandleClients + 1})
             end;
         {end_day, _From} ->
             _From ! {end_of_work, HandleClients, self()},
-            % Gui ! {end_of_work, {self(), Case}},
             io:format("sleeeping~n"),
             start_working(Case, Day + 1, Gui);
         % {goodbye, _} ->
@@ -59,7 +56,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
     end.
 
 %Simulation Time - one minute is equal to 5 seconds
-handle_client() ->
+handle_client(Gui, ParId, Case) ->
     receive
         {client, Pid, _, Time, Day} ->
             % io:format("serving~n"),

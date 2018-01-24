@@ -8,7 +8,6 @@ init({Receive, Send}, Main) ->
     Cashiers = init_cashiers(Wx, Receive, Send, length(Receive), 0,0,980,[]),
     io:format("~p", [Cashiers]),
     io:format("-----------GUI ~p", [Main]),
-    % show_clients(Wx, init_clients(10), 0, 100),
     loop(Wx, Cashiers, Main, [], {Receive, Send}).
 
 make_window() ->
@@ -58,8 +57,8 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             io:format("endday"),
             lists:foreach(fun(X) -> 
                 {Pid, WxText} = X, 
-                % io:format("endday"),
-                wxStaticText:setLabel(WxText, "")
+                wxStaticText:setLabel(WxText, ""),
+                wxStaticText:destroy(WxText)
                 end, Cashiers),
             {R, S} = RS,
             CashiersV2 = init_cashiers(Wx, R, S, length(R), 0,0,980,[]),

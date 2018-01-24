@@ -4,13 +4,13 @@
 % post office configuration
 number_of_cashier_receiving()   -> 3.   % their duty is to handle clients that want to receive a package MIN 1
 number_of_cashier_sending()     -> 2.   % their duty is to handle clients that want to send a package MIN 1
-working_hours_start()           -> -9.   % 09:00 MIN 0 MAX 23 
+working_hours_start()           -> 9.   % 09:00 MIN 0 MAX 23 
 working_hours_end()             -> 10.  % 10:00 MIN 0 MAX 24
 days()                          -> 2.   % how many days post office will be simulated % MIN 0
 break_after_day()               -> 10.  % in seconds % MIN 0
 
 % cashier configuration - time in MINUTES
-average_time_sending_package()      -> 6. % MIN 0
+average_time_sending_package()      -> 3. % MIN 0
 average_time_receiving_package()    -> 4. % MIN 0
 %average_time_answering_question()   -> 1.
 

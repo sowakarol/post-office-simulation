@@ -105,7 +105,7 @@ listen(_, Clients, Workers, Stats, Gui, Clock) ->
             summarize(end_simulation,Stats, Workers, Gui);
         {end_work, ClockPID} ->
             % synchronized(Workers),
-
+            Gui ! {end_day},
             NewSt =  summarize(end_day,Workers),
             NewStats = addStats(Stats, NewSt),
             timer:sleep(round(1000*configuration:break_after_day())),

@@ -9,7 +9,7 @@ init({Receive, Send}, Main) ->
     io:format("~p", [Cashiers]),
     io:format("-----------GUI ~p", [Main]),
     % show_clients(Wx, init_clients(10), 0, 100),
-    loop(Wx, Cashiers, Main, []).
+    loop(Wx, Cashiers, Main, [], {Receive, Send}).
 
 make_window() ->
     Server = wx:new(),
@@ -26,7 +26,7 @@ make_window() ->
 
     {Server, Frame, End_Button, Time_Text, ClientsR, ClientsS}.
 
-loop(Wx, Cashiers, Main, ClientList) ->
+loop(Wx, Cashiers, Main, ClientList, RS) ->
     {Server, Frame, End_Button, Time_Text, ClientsR, ClientsS} = Wx,
     io:format("--waiting in the loop--~n", []),
     receive 
@@ -34,23 +34,31 @@ loop(Wx, Cashiers, Main, ClientList) ->
             finish(Cashiers, End_Button, Frame, Main);
         {time_passed, CurrentTime} ->
             set_time(CurrentTime, Time_Text),
-            loop(Wx, Cashiers, Main, ClientList);
+            loop(Wx, Cashiers, Main, ClientList, RS);
         {client, Client} ->
             NewList = new_client(Client, ClientList, ClientsR),
-            loop(Wx, Cashiers, Main, NewList);
+            loop(Wx, Cashiers, Main, NewList, RS);
         {clients, S, R} ->
             CRList = clients(R, []),
             CSList = clients(S, []),
             wxStaticText:setLabel(ClientsR, CRList),
             wxStaticText:setLabel(ClientsS, CSList),
-            loop(Wx, Cashiers, Main, ClientList);
+            loop(Wx, Cashiers, Main, ClientList, RS);
         {cashier, CashierPid} ->
             io:format("CASHIER ~p", [CashierPid]),
             show_client_at_cashier(CashierPid, Cashiers),
-            loop(Wx, Cashiers, Main, ClientList);
+            loop(Wx, Cashiers, Main, ClientList, RS);
         {cashier, done, CashierPid} ->
             delete_client(CashierPid, Cashiers),
-            loop(Wx, Cashiers, Main, ClientList);
+            loop(Wx, Cashiers, Main, ClientList, RS);
+        {end_of_work, CashierPid} ->
+            delete_client(CashierPid, ClientList),
+            loop(Wx, Cashiers, Main, ClientList, RS);
+        {end_day} ->
+            lists:foreach(fun(X) -> {Pid, WxText} = X, wxStaticText:destroy(WxText) end, Cashiers),
+            {R, S} = RS,
+            CashiersV2 = init_cashiers(Wx, R, S, length(R), 0,0,980,[]),
+            loop(Wx, CashiersV2, Main, ClientList, RS);
         #wx{event=#wxClose{}} ->
             io:format("--closing window ~p-- ~n",[self()]),
             wxWindow:destroy(Frame),

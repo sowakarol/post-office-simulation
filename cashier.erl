@@ -44,6 +44,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
             end;
         {end_day, _From} ->
             _From ! {end_of_work, HandleClients, self()},
+            Gui ! {end_of_work, {self(), Case}},
             io:format("sleeeping~n"),
             start_working(Case, Day + 1, Gui);
         % {goodbye, _} ->

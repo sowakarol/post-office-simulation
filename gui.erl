@@ -55,7 +55,12 @@ loop(Wx, Cashiers, Main, ClientList, RS) ->
             delete_client(CashierPid, ClientList),
             loop(Wx, Cashiers, Main, ClientList, RS);
         {end_day} ->
-            lists:foreach(fun(X) -> {Pid, WxText} = X, wxStaticText:destroy(WxText) end, Cashiers),
+            io:format("endday"),
+            lists:foreach(fun(X) -> 
+                {Pid, WxText} = X, 
+                % io:format("endday"),
+                wxStaticText:setLabel(WxText, "")
+                end, Cashiers),
             {R, S} = RS,
             CashiersV2 = init_cashiers(Wx, R, S, length(R), 0,0,980,[]),
             loop(Wx, CashiersV2, Main, ClientList, RS);

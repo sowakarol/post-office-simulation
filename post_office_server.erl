@@ -105,6 +105,7 @@ listen(_, Clients, Workers, Stats, Gui, Clock) ->
             summarize(end_simulation,Stats, Workers, Gui);
         {end_work, ClockPID} ->
             % synchronized(Workers),
+            % io:format("endday"),
             Gui ! {end_day},
             NewSt =  summarize(end_day,Workers),
             NewStats = addStats(Stats, NewSt),

@@ -6,6 +6,7 @@ init({Receive, Send}, Main) ->
     Wx = make_window(),
     io:format("WDDDDD ~p ~p", [Receive, Send]),
     Cashiers = init_cashiers(Wx, Receive, Send, length(Receive), 0,0,980,[]),
+    io:format("~p", [Cashiers]),
     io:format("-----------GUI ~p", [Main]),
     % show_clients(Wx, init_clients(10), 0, 100),
     loop(Wx, Cashiers, Main, []).
@@ -43,11 +44,48 @@ loop(Wx, Cashiers, Main, ClientList) ->
             wxStaticText:setLabel(ClientsR, CRList),
             wxStaticText:setLabel(ClientsS, CSList),
             loop(Wx, Cashiers, Main, ClientList);
+        {cashier, CashierPid} ->
+            io:format("CASHIER ~p", [CashierPid]),
+            show_client_at_cashier(CashierPid, Cashiers),
+            loop(Wx, Cashiers, Main, ClientList);
+        {cashier, done, CashierPid} ->
+            delete_client(CashierPid, Cashiers),
+            loop(Wx, Cashiers, Main, ClientList);
         #wx{event=#wxClose{}} ->
             io:format("--closing window ~p-- ~n",[self()]),
             wxWindow:destroy(Frame),
             ok
     end.
+
+delete_client(Cashier, Cashiers) ->
+    {CashierPid, Case} = Cashier,
+    lists:foreach(fun(X)->
+                    {Pid, Wx_Text} = X,
+                    if Pid == CashierPid ->
+                        wxStaticText:setLabel(Wx_Text, cashier_out(Case));
+                    true ->
+                        ok
+                    end
+                end, Cashiers
+    ).
+
+show_client_at_cashier(Cashier, Cashiers) ->
+    {CashierPid, Case} = Cashier,
+    io:format("~p", [Case]),
+    lists:foreach(fun(X)->
+                    {Pid, Wx_Text} = X,
+                    if Pid == CashierPid ->
+                        wxStaticText:setLabel(Wx_Text, cashier_out(Case) ++ "\nKlient");
+                    true ->
+                        ok
+                    end
+                end, Cashiers
+    ).
+cashier_out(send_package) ->
+    "Send |";
+cashier_out(receive_package) ->
+    "Receive |".
+
 
 clients([], List) ->    
     List;
@@ -104,11 +142,14 @@ results({R_Sum, S_Sum}) ->
     integer_to_list(R_Sum) ++ " packages received\n".
 
 destroy_cashiers(List) ->
-    lists:foreach(fun(H) -> wxWindow:destroy(H) end, List).
+    lists:foreach(fun(H) -> 
+        {Pid, Wx_Text} = H,
+        wxWindow:destroy(Wx_Text) end, List).
 
 init_cashiers(_, [], [],_, _,_,_, List) -> List;
 init_cashiers({_, Frame, _, _, _, _} = Wx, [], [H|T], CashiersNumber, X,Y, X_Limit, List) ->
-    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Send | ", [{pos,{X,Y}}])]),
+    Static_Text = {H, wxStaticText:new(Frame, CashiersNumber, "Send | ", [{pos,{X,Y}}])},
+    List2 = lists:append(List, [Static_Text]),
     if 
         X > X_Limit ->
             init_cashiers(Wx,[],T, CashiersNumber,0, Y + 20, X_Limit, List2);
@@ -116,7 +157,8 @@ init_cashiers({_, Frame, _, _, _, _} = Wx, [], [H|T], CashiersNumber, X,Y, X_Lim
             init_cashiers(Wx,[],T, CashiersNumber,X + 60, Y, X_Limit, List2)
     end;
 init_cashiers({_, Frame, _, _, _, _} = Wx, [H|T], Send, CashiersNumber, X,Y, X_Limit, List) ->
-    List2 = lists:append(List, [wxStaticText:new(Frame, CashiersNumber, "Receive | ", [{pos,{X,Y}}])]),
+    Static_Text = {H, wxStaticText:new(Frame, CashiersNumber, "Receive | ", [{pos,{X,Y}}])},
+    List2 = lists:append(List, [Static_Text]),
     if 
         X > X_Limit ->
             init_cashiers(Wx,T,Send, CashiersNumber,0, Y + 20, X_Limit, List2);

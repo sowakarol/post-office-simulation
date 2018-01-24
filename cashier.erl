@@ -1,5 +1,6 @@
 -module(cashier).
 -compile([export_all]).
+-include_lib("wx/include/wx.hrl").
 
 -record(cashier, {state = ready, handled_clients = 0, cashierCase = everything, day = 1, gui = gui}).
 
@@ -10,15 +11,19 @@ start_working(Case, Day) ->
     Self = #cashier{state = ready, cashierCase = Case, handled_clients = 0},
     ready(Self#cashier{state = ready, day = Day}).
 
-ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCase = Case, day = Day}) ->
-    % io:format("~p~n",[State]),
+ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCase = Case, day = Day, gui = Gui}) ->
     % monitor
     receive
+        % {static_text, T} ->
+            % io:format("siemano"),
+            % io:format("~p elko", [T]),
+            % ok;
         {gui, GuiPid} -> 
             io:format("gui ~p", [GuiPid]),
             ready(Self#cashier{gui = GuiPid});
         {client, _Case, Time} -> 
             io:format("preparing to handle~n"),
+            Gui ! {cashier, {self(), Case}},
             Pid = spawn(fun() -> handle_client() end),
             Pid ! {client, self(), _Case, Time, Day},
             ready(Self#cashier{state = busy});
@@ -26,6 +31,7 @@ ready(Self = #cashier{state = State, handled_clients = HandleClients, cashierCas
             _From ! {send_state, self(), State},
             ready(Self);   
         {handled_client, D}  ->
+            Gui ! {cashier, done, {Case, self()}},
             if 
                 D /= Day -> ready(Self#cashier{state = State});
                 true ->
